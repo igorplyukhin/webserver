@@ -1,73 +1,70 @@
-# python3
-import socket
+#!/usr/bin/env python3.8
+import asyncio
 import sys
-import time
 
 
-def run_server(port=53210):
-    serv_sock = create_serv_sock(port)
-    cid = 0
-    while True:
-        client_sock = accept_client_conn(serv_sock, cid)
-        serve_client(client_sock, cid)
-        cid += 1
+class HTTPServer:
 
+    def __init__(self, host, port):
+        self.counter = 0
+        self.host = host
+        self.port = port
 
-def serve_client(client_sock, cid):
-    request = read_request(client_sock)
-    if request is None:
-        print(f'Client #{cid} unexpectedly disconnected')
-    else:
-        response = handle_request(request)
-        write_response(client_sock, response, cid)
+    async def run_server(self, host, port=8000):
+        server = await asyncio.start_server(self.serve_client, host, port)
+        await server.serve_forever()
 
+    async def serve_client(self, reader, writer):
+        cid = self.counter
+        self.counter += 1
+        print(f'Client #{cid} connected')
 
-def create_serv_sock(serv_port):
-    serv_sock = socket.socket(socket.AF_INET,
-                              socket.SOCK_STREAM,
-                              proto=0)
-    serv_sock.bind(('', serv_port))
-    serv_sock.listen()
-    return serv_sock
-
-
-def accept_client_conn(serv_sock, cid):
-    client_sock, client_addr = serv_sock.accept()
-    print(f'Client #{cid} connected '
-          f'{client_addr[0]}:{client_addr[1]}')
-    return client_sock
-
-
-def read_request(client_sock, delimiter=b'!'):
-    request = bytearray()
-    try:
         while True:
-            chunk = client_sock.recv(4)
+            request = await self.read_request(reader)
+            if request is None:
+                print(f'Client #{cid} unexpectedly disconnected')
+                writer.close()
+                break
+            else:
+                response = await self.handle_request(request)
+                await self.write_response(writer, response, cid)
+
+    @staticmethod
+    async def read_request(reader, delimiter=b'!'):
+        request = bytearray()
+        while True:
+            chunk = await reader.read(4)
             if not chunk:
                 # Клиент преждевременно отключился.
-                return None
+                break
 
             request += chunk
             if delimiter in request:
                 return request
 
-    except ConnectionResetError:
-        # Соединение было неожиданно разорвано.
         return None
-    except:
-        raise
+
+    @staticmethod
+    async def handle_request(request):
+        await asyncio.sleep(5)
+        return request[::-1]
+
+    @staticmethod
+    async def write_response(writer, response, cid):
+        writer.write(response)
+        await writer.drain()
+        # writer.close()
+        print(f'Client #{cid} has been served')
 
 
-def handle_request(request):
-    time.sleep(5)
-    return request[::-1]
-
-
-def write_response(client_sock, response, cid):
-    client_sock.sendall(response)
-    client_sock.close()
-    print(f'Client #{cid} has been served')
+async def loop():
+    s1 = HTTPServer('192.168.1.83', 8000)
+    s2 = HTTPServer('127.0.0.2', 8000)
+    t1 = asyncio.create_task(s1.run_server(s1.host, s2.port))
+    t2 = asyncio.create_task(s2.run_server(s2.host, s2.port))
+    await t1
+    await t2
 
 
 if __name__ == '__main__':
-    run_server(port=int(sys.argv[1]))
+    asyncio.run(loop())
