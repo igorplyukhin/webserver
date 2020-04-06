@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Hamming</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link type="text/css" rel="stylesheet" href="style.css">
+	<script type="text/javascript" src="script.js"></script>
+
+</head>
+
+<body>
+	<div class="content">
+		<h1>Hamming</h1>
+		<div class="row">
+			<label>Original message</label>
+			<input type='text' id='mes' maxlength='4' oninput="Refresh(), CheckChar('mes')">
+			<input type='button' onclick='Code()' value='Code'>
+		</div>
+		<div class="row">
+			<label>Coded message</label>
+			<input type='text' id='mes_cod' maxlength='7' oninput="Refresh(), CheckChar('mes_cod')">
+			<input type="button" onclick="Refresh(), Decode()" value="Decode">
+		</div>
+		<div class="row">
+			<label>Decoded message</label>
+			<input type='text' id='decod_mes' maxlength='4' oninput="Refresh(), CheckChar('decod_mes')">
+			<span class=" ingredient" id="error"></span>
+		</div>
+	</div>
+
+
+</body>
+
+</html>
