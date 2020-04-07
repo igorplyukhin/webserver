@@ -13,5 +13,4 @@ async def send_response(writer, resp):
     if resp.body:
         writer.write(resp.body)
 
-    await writer.drain()
-    writer.close()
+

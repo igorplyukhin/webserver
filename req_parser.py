@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.8
+import asyncio
 from email.parser import Parser
 from functools import lru_cache
 from urllib.parse import parse_qs, urlparse
@@ -39,7 +40,10 @@ async def parse_request(server, reader):
 
 
 async def parse_request_line(reader):
-    raw_line = await reader.readline()
+    raw_line = await asyncio.wait_for(reader.readline(), 5)
+    if not raw_line:
+        raise ConnectionAbortedError
+
     if len(raw_line) > MAX_REQ_LINE_LEN:
         raise Exception('Line is too long')
 
@@ -69,4 +73,3 @@ async def parse_headers(reader):
             raise Exception("Too many headers")
 
     return Parser().parsestr(bytes.join(b'', headers).decode('iso-8859-1'))
-

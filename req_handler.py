@@ -1,22 +1,29 @@
 #!/usr/bin/env python3.8
 import os
 import mimetypes
+from functools import lru_cache
 
 
+@lru_cache(maxsize=None)
 async def handle_request(server, request):
+    file_path = f'{server.root_directory}{request.path}'
+
     if request.method == 'GET':
         try:
-            with open(f'{server.root_directory}{request.path}') as f:
+            with open(f'{server.root_directory}{request.path}', 'rb') as f:
                 file_content = f.read()
                 headers = [('Server', 'my_server'),
                            ('Content-Type', mimetypes.guess_type(request.path)[0]),
-                           ('Content-Length', len(file_content))]
-                return Response(200, 'OK', headers, file_content.encode('utf-8'))
+                           ('Content-Length', len(file_content)),
+                           ('Cache-Control', 'public'),
+                           ('Connection', 'keep-alive')]
+                return Response(200, 'OK', headers, file_content)
         except:
-            phrase = 'Hello'
-            headers = [('Content-Type', 'text/html'),
-                       ('Content-Length', len(phrase))]
-            return Response(200, 'OK', headers, phrase.encode('utf-8'))
+            pass
+        #     phrase = 'Hello'
+        #     headers = [('Content-Type', 'text/html'),
+        #                ('Content-Length', len(phrase))]
+        #     return Response(200, 'OK', headers, phrase.encode('utf-8'))
 
 
 class Response:

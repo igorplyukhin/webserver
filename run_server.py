@@ -24,15 +24,18 @@ class HTTPServer:
         print(f'Client {client_info} connected')
 
         while True:
-            request = await req_parser.parse_request(self, reader)
-            print(request.path)
-            # if request is None:
-            #     print(f'Client #{client_info} disconnected')
-            #     writer.close()
-            #     break
-            response = await req_handler.handle_request(self, request)
-            await resp_sender.send_response(writer, response)
-
+            try:
+                request = await req_parser.parse_request(self, reader)
+                response = await req_handler.handle_request(self, request)
+                await resp_sender.send_response(writer, response)
+            except asyncio.exceptions.TimeoutError:
+                print(f'connection {client_info} closed by timeout')
+                break
+            except ConnectionAbortedError:
+                print(f'connection {client_info} reset by peer')
+                break
+        await writer.drain()
+        writer.close()
 
 # async def create_virtual_servers(count):
 #     s1 = HTTPServer('192.168.1.83', 8000, '192.168.1.83')
