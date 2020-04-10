@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!./venv python3.8
 
 import asyncio
 import req_parser
@@ -34,6 +34,10 @@ class HTTPServer:
             except ConnectionAbortedError:
                 print(f'connection {client_info} reset by peer')
                 break
+            except req_parser.HTTPError as error:
+                response = await req_handler.handle_error(error)
+                await resp_sender.send_response(writer, response)
+
         await writer.drain()
         writer.close()
 
@@ -47,7 +51,7 @@ class HTTPServer:
 
 
 if __name__ == '__main__':
-    s = HTTPServer('127.0.0.1', 8000, 'localhost')
+    s = HTTPServer('192.168.1.83', 8000, '192.168.1.83')
     try:
         asyncio.run(s.run_server())
     except KeyboardInterrupt:

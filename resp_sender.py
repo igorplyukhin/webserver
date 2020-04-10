@@ -12,5 +12,3 @@ async def send_response(writer, resp):
     writer.write(b'\r\n')
     if resp.body:
         writer.write(resp.body)
-
-
