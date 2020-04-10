@@ -24,6 +24,12 @@ class Request:
         self.version = version
         self.headers = headers
 
+    def __hash__(self):
+        return hash((self.method, self.target, self.version))
+
+    def __eq__(self, other):
+        return isinstance(other, Request) and self.__hash__() == other.__hash__()
+
     @property
     @lru_cache()
     def url(self):

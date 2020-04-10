@@ -1,11 +1,11 @@
 #!/usr/bin/env python3.8
 import os
 import mimetypes
-from functools import lru_cache
 from req_parser import HTTPError
+from async_lru import alru_cache
 
 
-@lru_cache(maxsize=None)
+@alru_cache(maxsize=2048)
 async def handle_request(server, request):
     if request.method == 'GET':
         try:

@@ -51,7 +51,7 @@ class HTTPServer:
 
 
 if __name__ == '__main__':
-    s = HTTPServer('192.168.1.83', 8000, '192.168.1.83')
+    s = HTTPServer('localhost', 8000, 'localhost')
     try:
         asyncio.run(s.run_server())
     except KeyboardInterrupt:
