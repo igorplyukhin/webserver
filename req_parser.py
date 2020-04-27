@@ -30,6 +30,9 @@ class Request:
     def __eq__(self, other):
         return isinstance(other, Request) and self.__hash__() == other.__hash__()
 
+    def __str__(self):
+        return ' '.join([self.method, self.target, self.version, str(self.headers)])
+
     @property
     @lru_cache()
     def url(self):
@@ -40,11 +43,25 @@ class Request:
         return self.url.path
 
 
-async def parse_request(server, reader):
-    method, target, version = await parse_request_line(reader)
-    headers = await parse_headers(reader)
-    print(method, target, version)
-    print(headers)
+async def read_request(reader):
+    raw_request = []
+    raw_line = await asyncio.wait_for(reader.readline(), 15)
+    if not raw_line:
+        raise ConnectionAbortedError
+    raw_request.append(raw_line)
+    while True:
+        raw_line = await reader.readline()
+        raw_request.append(raw_line)
+        if raw_line in REQ_END_SYMBOLS:
+            break
+    return raw_request
+
+
+def parse_request(server, raw_request):
+    request_line = raw_request[0]
+    headers = raw_request[1:]
+    method, target, version = parse_request_line(request_line)
+    headers = parse_headers(headers)
     host = headers.get('Host')
     if not host:
         raise HTTPError(400, 'Bad request', 'Host header is missing')
@@ -53,11 +70,7 @@ async def parse_request(server, reader):
     return Request(method, target, version, headers)
 
 
-async def parse_request_line(reader):
-    raw_line = await asyncio.wait_for(reader.readline(), 15)
-    if not raw_line:
-        raise ConnectionAbortedError
-
+def parse_request_line(raw_line):
     if len(raw_line) > MAX_REQ_LINE_LEN:
         raise HTTPError(400, 'Bad request', 'Line is too long')
 
@@ -73,17 +86,5 @@ async def parse_request_line(reader):
     return method, target, version
 
 
-async def parse_headers(reader):
-    headers = []
-    while True:
-        line = await reader.readline()
-        if len(line) > MAX_REQ_LINE_LEN:
-            raise HTTPError(494, 'Request header too large')
-        if line in REQ_END_SYMBOLS:
-            break
-
-        headers.append(line)
-        if len(headers) > MAX_HEADERS_COUNT:
-            raise HTTPError(494, 'Too many headers')
-
-    return Parser().parsestr(bytes.join(b'', headers).decode('iso-8859-1'))
+def parse_headers(raw_headers):
+    return Parser().parsestr(bytes.join(b'', raw_headers).decode('iso-8859-1'))

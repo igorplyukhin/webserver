@@ -1,29 +1,33 @@
 #!/usr/bin/env python3.8
-import os
 import mimetypes
 from req_parser import HTTPError
-from async_lru import alru_cache
+import os
 
 
-@alru_cache(maxsize=2048)
-async def handle_request(server, request):
+def handle_request(server, request):
     if request.method == 'GET':
-        try:
-            with open(f'{server.root_directory}{request.path}', 'rb') as f:
-                file_content = f.read()
-                headers = [('Server', 'my_server'),
-                           ('Content-Type', mimetypes.guess_type(request.path)[0]),
-                           ('Content-Length', len(file_content)),
-                           ('Cache-Control', 'public'),
-                           ('Connection', 'keep-alive')]
-                return Response(200, 'OK', headers, file_content)
-        except:
-            raise HTTPError(404, 'Not Found')
+        handle_get_request(server, request)
     else:
         raise NotImplementedError()
 
 
-async def handle_error(error):
+def handle_get_request(server, request):
+    try:
+        with open(f'{server.root_directory}{request.path}', 'rb') as f:
+            file_content = f.read()
+            headers = {'Server': 'my_server',
+                       'Content-Type': mimetypes.guess_type(request.path)[0],
+                       'Content-Length': len(file_content)}
+            if 'Connection' in request.headers.keys():
+                headers['Connection'] = request.headers['Connection']
+            else:
+                headers['Connection'] = 'close'
+            return Response(200, 'OK', headers, file_content)
+    except OSError:
+        raise HTTPError(404, 'Not Found')
+
+
+def handle_error(error):
     try:
         status = error.status
         description = error.description
@@ -41,3 +45,6 @@ class Response:
         self.description = description
         self.headers = headers
         self.body = body
+
+    def __str__(self):
+        return '\r\n'.join([' '.join([str(self.status), str(self.description)]), str(self.headers)])
