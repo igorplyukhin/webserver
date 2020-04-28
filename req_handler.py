@@ -1,30 +1,38 @@
 #!/usr/bin/env python3.8
 import mimetypes
 from req_parser import HTTPError
-import os
+from functools import lru_cache
+
+
+@lru_cache(1000)
+def read_file(file_path):
+    with open(file_path, 'rb') as f:
+        content = f.read()
+        return content
 
 
 def handle_request(server, request):
     if request.method == 'GET':
-        handle_get_request(server, request)
+        return handle_get_request(server, request)
     else:
         raise NotImplementedError()
 
 
 def handle_get_request(server, request):
     try:
-        with open(f'{server.root_directory}{request.path}', 'rb') as f:
-            file_content = f.read()
-            headers = {'Server': 'my_server',
-                       'Content-Type': mimetypes.guess_type(request.path)[0],
-                       'Content-Length': len(file_content)}
-            if 'Connection' in request.headers.keys():
-                headers['Connection'] = request.headers['Connection']
-            else:
-                headers['Connection'] = 'close'
-            return Response(200, 'OK', headers, file_content)
-    except OSError:
-        raise HTTPError(404, 'Not Found')
+        file_path = f'{server.root_directory}{request.path}'
+        file_content = read_file(file_path)
+        print(read_file.cache_info())
+        headers = {'Server': 'my_server',
+                   'Content-Type': mimetypes.guess_type(request.path)[0],
+                   'Content-Length': len(file_content)}
+        if 'Connection' in request.headers:
+            headers['Connection'] = request.headers['Connection']
+        else:
+            headers['Connection'] = 'close'
+        return Response(200, 'OK', headers, file_content)
+    except FileNotFoundError:
+        raise HTTPError(404, "Not Found")
 
 
 def handle_error(error):
@@ -36,7 +44,7 @@ def handle_error(error):
         status = 500
         description = b'Internal Server Error'
         body = b'Internal Server Error'
-    return Response(status, description, [('Content-Length', len(body))], body)
+    return Response(status, description, {'Content-Length': len(body), 'Connection': 'keep-alive'}, body)
 
 
 class Response:

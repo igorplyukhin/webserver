@@ -3,6 +3,7 @@ import asyncio
 import req_parser
 import req_handler
 import resp_sender
+from memory_profiler import memory_usage
 
 
 class HTTPServer:
@@ -24,10 +25,11 @@ class HTTPServer:
                 try:
                     raw_request = await req_parser.read_request(reader)
                     request = req_parser.parse_request(self, raw_request)
-                    response = req_handler.handle_request(self, request)
                     print(request)
+                    response = req_handler.handle_request(self, request)
                     print(response)
                     resp_sender.send_response(writer, response)
+                    print(memory_usage(), '\r\n------------------------------------')
                 except asyncio.exceptions.TimeoutError:
                     print(f'connection {client_info} closed by timeout')
                     break
@@ -40,6 +42,10 @@ class HTTPServer:
                 except req_parser.HTTPError as error:
                     response = req_handler.handle_error(error)
                     resp_sender.send_response(writer, response)
+                    print(response, '\r\n------------------------------------')
+        #except:
+            #log smth ConnectionResetError if close connection while handling send_error()
+            #pass
         finally:
             await writer.drain()
             writer.close()

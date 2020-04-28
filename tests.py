@@ -1,7 +1,7 @@
-import asyncio
 import unittest
 import req_parser
 import run_server
+from functools import lru_cache
 
 
 class TestParser(unittest.TestCase):
@@ -30,27 +30,47 @@ class TestParser(unittest.TestCase):
         self.assertEqual(err.exception.status, 400)
 
     def test(self):
+        s='./static/server1/script.js'
         import os
         import time
 
         start = time.time()
-        d = os.open('./static/server1/script.js', os.O_RDONLY)
-        print(d)
-        for i in range(1000):
-            with open(d, 'r') as f:
+        d = {}
+        d[s] = os.open(s, os.O_RDONLY)
+
+        for i in range(10000):
+            if s in d:
+                os.read(d[s], os.path.getsize(s))
+
+        os.close(d[s])
+
+        end = time.time()
+        print(end - start)
+
+        start = time.time()
+
+
+        for i in range(10000):
+            with open(s, 'r') as f:
                 f.read()
 
         end = time.time()
         print(end - start)
 
         start = time.time()
-        for i in range(1000):
-            with open('./static/server1/hamming.html', 'r') as f:
-                f.read()
+        for i in range(10000):
+            read_file(s)
 
+        print(read_file.cache_info())
         end = time.time()
         print(end - start)
 
+
+@lru_cache(1000)
+def read_file(file_path):
+    with open(file_path, 'r') as f:
+        a = f.read()
+    return a
 
 if __name__ == '__main__':
     unittest.main()

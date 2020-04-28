@@ -24,12 +24,6 @@ class Request:
         self.version = version
         self.headers = headers
 
-    def __hash__(self):
-        return hash((self.method, self.target, self.version))
-
-    def __eq__(self, other):
-        return isinstance(other, Request) and self.__hash__() == other.__hash__()
-
     def __str__(self):
         return ' '.join([self.method, self.target, self.version, str(self.headers)])
 
