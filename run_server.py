@@ -4,6 +4,8 @@ import req_parser
 import req_handler
 import resp_sender
 from memory_profiler import memory_usage
+from lru import LRU
+import os
 
 
 class HTTPServer:
@@ -12,6 +14,7 @@ class HTTPServer:
         self.port = port
         self.server_name = server_name
         self.root_directory = root_directory
+        self.fd_cache = LRU(3, callback=lambda key, val: os.close(val))
 
     async def run_server(self):
         server = await asyncio.start_server(self.serve_client, self.host, self.port)
@@ -29,7 +32,8 @@ class HTTPServer:
                     response = req_handler.handle_request(self, request)
                     print(response)
                     resp_sender.send_response(writer, response)
-                    print(memory_usage(), '\r\n------------------------------------')
+                    # print(self.fd_cache.items())
+                    # print(memory_usage(), '\r\n------------------------------------')
                 except asyncio.exceptions.TimeoutError:
                     print(f'connection {client_info} closed by timeout')
                     break
@@ -43,9 +47,9 @@ class HTTPServer:
                     response = req_handler.handle_error(error)
                     resp_sender.send_response(writer, response)
                     print(response, '\r\n------------------------------------')
-        #except:
-            #log smth ConnectionResetError if close connection while handling send_error()
-            #pass
+        # except:
+            # log smth ConnectionResetError if close connection while handling send_error()
+            # pass
         finally:
             await writer.drain()
             writer.close()

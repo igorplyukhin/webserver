@@ -1,14 +1,7 @@
 #!/usr/bin/env python3.8
 import mimetypes
 from req_parser import HTTPError
-from functools import lru_cache
-
-
-@lru_cache(1000)
-def read_file(file_path):
-    with open(file_path, 'rb') as f:
-        content = f.read()
-        return content
+import os
 
 
 def handle_request(server, request):
@@ -21,18 +14,25 @@ def handle_request(server, request):
 def handle_get_request(server, request):
     try:
         file_path = f'{server.root_directory}{request.path}'
-        file_content = read_file(file_path)
-        print(read_file.cache_info())
-        headers = {'Server': 'my_server',
-                   'Content-Type': mimetypes.guess_type(request.path)[0],
-                   'Content-Length': len(file_content)}
-        if 'Connection' in request.headers:
-            headers['Connection'] = request.headers['Connection']
+        if file_path in server.fd_cache:
+            fd = server.fd_cache[file_path]
         else:
-            headers['Connection'] = 'close'
-        return Response(200, 'OK', headers, file_content)
-    except FileNotFoundError:
+            server.fd_cache[file_path] = os.open(file_path, os.O_RDONLY)
+            fd = server.fd_cache[file_path]
+
+        file_content = os.read(fd, os.path.getsize(file_path))
+        os.lseek(fd, 0, 0)
+    except (FileNotFoundError, IsADirectoryError):
         raise HTTPError(404, "Not Found")
+
+    headers = {'Server': 'my_server',
+               'Content-Type': mimetypes.guess_type(request.path)[0],
+               'Content-Length': len(file_content)}
+    if 'Connection' in request.headers:
+        headers['Connection'] = request.headers['Connection']
+    else:
+        headers['Connection'] = 'close'
+    return Response(200, 'OK', headers, file_content)
 
 
 def handle_error(error):
