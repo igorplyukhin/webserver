@@ -17,17 +17,18 @@ def handle_get_request(server, request):
         if file_path in server.fd_cache:
             fd = server.fd_cache[file_path]
         else:
-            server.fd_cache[file_path] = os.open(file_path, os.O_RDONLY)
+            server.fd_cache[file_path] = os.open(file_path, os.O_RDONLY | os.O_BINARY)
             fd = server.fd_cache[file_path]
 
-        file_content = os.read(fd, os.path.getsize(file_path))
+        file_size = os.path.getsize(file_path)
+        file_content = os.read(fd, file_size)
         os.lseek(fd, 0, 0)
     except (FileNotFoundError, IsADirectoryError):
         raise HTTPError(404, "Not Found")
 
     headers = {'Server': 'my_server',
                'Content-Type': mimetypes.guess_type(request.path)[0],
-               'Content-Length': len(file_content)}
+               'Content-Length': file_size}
     if 'Connection' in request.headers:
         headers['Connection'] = request.headers['Connection']
     else:

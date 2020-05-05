@@ -2,6 +2,7 @@ import unittest
 import req_parser
 import run_server
 from functools import lru_cache
+import os
 
 
 class TestParser(unittest.TestCase):
@@ -64,6 +65,14 @@ class TestParser(unittest.TestCase):
         print(read_file.cache_info())
         end = time.time()
         print(end - start)
+
+    def test_a(self):
+        path = "static/server1/pic.jpg"
+        d = os.open(path, os.O_RDONLY | os.O_BINARY)
+        size = os.path.getsize(path)
+        f = os.read(d, size)
+        print(len(f))
+        print(os.path.getsize(path))
 
 
 @lru_cache(1000)
