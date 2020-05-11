@@ -67,7 +67,7 @@ class TestParser(unittest.TestCase):
         print(end - start)
 
     def test_a(self):
-        path = "static/server1/pic.jpg"
+        path = "static/server1/pics/pic.jpg"
         d = os.open(path, os.O_RDONLY | os.O_BINARY)
         size = os.path.getsize(path)
         f = os.read(d, size)
@@ -80,6 +80,8 @@ def read_file(file_path):
     with open(file_path, 'r') as f:
         a = f.read()
     return a
+
+
 
 if __name__ == '__main__':
     unittest.main()

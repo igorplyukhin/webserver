@@ -12,12 +12,26 @@ def handle_request(server, request):
 
 
 def handle_get_request(server, request):
+    file_path = f'{server.root_directory}{request.path}'
+    print(file_path)
+    if os.path.isfile(file_path):
+        return handle_get_file(server, request, file_path)
+    if os.path.isdir(file_path):
+        return handle_get_dir(request, file_path)
+    else:
+        raise HTTPError(404, 'Not Found')
+
+
+def handle_get_file(server, request, file_path):
     try:
-        file_path = f'{server.root_directory}{request.path}'
         if file_path in server.fd_cache:
             fd = server.fd_cache[file_path]
         else:
-            server.fd_cache[file_path] = os.open(file_path, os.O_RDONLY | os.O_BINARY)
+            if hasattr(os, 'O_BINARY'): # Windows
+                attributes = os.O_RDONLY | os.O_BINARY
+            else:
+                attributes = os.O_RDONLY
+            server.fd_cache[file_path] = os.open(file_path, attributes)
             fd = server.fd_cache[file_path]
 
         file_size = os.path.getsize(file_path)
@@ -34,6 +48,19 @@ def handle_get_request(server, request):
     else:
         headers['Connection'] = 'close'
     return Response(200, 'OK', headers, file_content)
+
+
+def handle_get_dir(request, file_path):
+    content = os.popen(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8").read()
+    print(content)
+    headers = {'Server': 'my_server',
+               'Content-Type': 'text/html',
+               'Content-Length': len(content)}
+    if 'Connection' in request.headers:
+        headers['Connection'] = request.headers['Connection']
+    else:
+        headers['Connection'] = 'close'
+    return Response(200, 'OK', headers, content.encode('utf-8'))
 
 
 def handle_error(error):

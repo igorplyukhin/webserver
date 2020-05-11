@@ -14,7 +14,7 @@ class HTTPServer:
         self.port = port
         self.server_name = server_name
         self.root_directory = root_directory
-        self.fd_cache = LRU(3, callback=lambda key, val: os.close(val))
+        self.fd_cache = LRU(1000, callback=lambda key, val: os.close(val))
 
     async def run_server(self):
         server = await asyncio.start_server(self.serve_client, self.host, self.port)
@@ -32,8 +32,8 @@ class HTTPServer:
                     response = req_handler.handle_request(self, request)
                     print(response)
                     resp_sender.send_response(writer, response)
-                    # print(self.fd_cache.items())
-                    # print(memory_usage(), '\r\n------------------------------------')
+                    print(self.fd_cache.items())
+                    print(memory_usage(), '\r\n------------------------------------')
                 except asyncio.exceptions.TimeoutError:
                     print(f'connection {client_info} closed by timeout')
                     break
