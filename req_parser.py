@@ -18,11 +18,12 @@ class HTTPError(Exception):
 
 
 class Request:
-    def __init__(self, method, target, version, headers):
+    def __init__(self, method, target, version, headers, body=None):
         self.method = method
         self.target = target
         self.version = version
         self.headers = headers
+        self.body = body
 
     def __str__(self):
         return ' '.join([self.method, self.target, self.version, str(self.headers)])
@@ -37,7 +38,7 @@ class Request:
         return self.url.path
 
 
-async def read_request(reader):
+async def get_request_object(server, reader):
     raw_request = []
     raw_line = await asyncio.wait_for(reader.readline(), 15)
     if not raw_line:
@@ -48,7 +49,11 @@ async def read_request(reader):
         raw_request.append(raw_line)
         if raw_line in REQ_END_SYMBOLS:
             break
-    return raw_request
+    request = parse_request(server, raw_request)
+    if request.method == 'POST':
+        body = await reader.read(request.headers['Content-Length'])
+        request.body = body
+    return request
 
 
 def parse_request(server, raw_request):

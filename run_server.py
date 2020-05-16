@@ -26,8 +26,7 @@ class HTTPServer:
             print(f'Client {client_info} connected')
             while True:
                 try:
-                    raw_request = await req_parser.read_request(reader)
-                    request = req_parser.parse_request(self, raw_request)
+                    request = await req_parser.get_request_object(self, reader)
                     print(request)
                     response = req_handler.handle_request(self, request)
                     print(response)

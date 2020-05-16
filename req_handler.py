@@ -7,9 +7,13 @@ import os
 def handle_request(server, request):
     if request.method == 'GET':
         return handle_get_request(server, request)
+    if request.method == 'POST':
+        return handle_post_request(server,request)
     else:
         raise NotImplementedError()
 
+def handle_post_request(server,request):
+    pass
 
 def handle_get_request(server, request):
     file_path = f'{server.root_directory}{request.path}'
@@ -52,7 +56,6 @@ def handle_get_file(server, request, file_path):
 
 def handle_get_dir(request, file_path):
     content = os.popen(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8").read()
-    print(content)
     headers = {'Server': 'my_server',
                'Content-Type': 'text/html',
                'Content-Length': len(content)}
