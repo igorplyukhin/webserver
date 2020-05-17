@@ -51,7 +51,7 @@ async def get_request_object(server, reader):
             break
     request = parse_request(server, raw_request)
     if request.method == 'POST':
-        body = await reader.read(request.headers['Content-Length'])
+        body = await reader.read(int(request.headers['Content-Length']))
         request.body = body
     return request
 

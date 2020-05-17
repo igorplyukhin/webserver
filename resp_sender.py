@@ -13,5 +13,5 @@ def send_response(writer, resp):
     if resp.body:
         writer.write(resp.body)
 
-    if resp.headers['Connection'] == 'close':
+    if resp.headers is None or resp.headers.get('Connection') != 'keep-alive':
         raise ConnectionResetError
