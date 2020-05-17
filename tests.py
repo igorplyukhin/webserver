@@ -3,6 +3,8 @@ import req_parser
 import run_server
 from functools import lru_cache
 import os
+from subprocess import Popen, PIPE, check_output
+import subprocess
 
 
 class TestParser(unittest.TestCase):
@@ -67,12 +69,12 @@ class TestParser(unittest.TestCase):
         print(end - start)
 
     def test_a(self):
-        path = "static/server1/pics/pic.jpg"
-        d = os.open(path, os.O_RDONLY | os.O_BINARY)
-        size = os.path.getsize(path)
-        f = os.read(d, size)
-        print(len(f))
-        print(os.path.getsize(path))
+        request = 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n'
+        server_response = check_output(f'echo \'{request}\' | nc -Nw1 localhost 8000',
+                                       stderr=subprocess.STDOUT, shell=True)
+        print(server_response.decode('utf-8'))
+
+        pass
 
 
 @lru_cache(1000)
