@@ -1,15 +1,19 @@
 import unittest
 import req_parser
 import run_server
-from functools import lru_cache
+import req_handler
 import os
-from subprocess import Popen, PIPE, check_output
-import subprocess
+from subprocess import check_output, STDOUT
+
+
+if __name__ == '__main__':
+    unittest.main()
 
 
 class TestParser(unittest.TestCase):
-    def setUp(self):
-        self.server = run_server.HTTPServer()
+    @classmethod
+    def setUpClass(cls):
+        cls.server = run_server.HTTPServer()
 
     def test_simple(self):
         raw_req = [b'GET / HTTP/1.1\r\n', b'Host: localhost\r\n']
@@ -32,58 +36,61 @@ class TestParser(unittest.TestCase):
 
         self.assertEqual(err.exception.status, 400)
 
-    def test(self):
-        s='./static/server1/script.js'
-        import os
-        import time
 
-        start = time.time()
-        d = {}
-        d[s] = os.open(s, os.O_RDONLY)
+class TestHandler(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = run_server.HTTPServer(root_directory='./static/test_dir')
+        os.mknod('static/test_dir/abc.txt')
 
-        for i in range(10000):
-            if s in d:
-                os.read(d[s], os.path.getsize(s))
+    @classmethod
+    def tearDownClass(cls):
+        os.remove('static/test_dir/abc.txt')
+        os.remove('static/test_dir/posted_doc.txt')
 
-        os.close(d[s])
+    def test_get_existing_file(self):
+        test_string = 'test_string'
+        with open('static/test_dir/abc.txt', 'w') as f:
+            f.write(test_string)
+        req = req_parser.Request('GET', '/abc.txt', 'HTTP/1.1', {})
+        response = req_handler.handle_get_request(self.server, req)
+        self.assertEqual(test_string, response.body.decode('utf-8'))
 
-        end = time.time()
-        print(end - start)
+    def test_get_non_existing_file(self):
+        with self.assertRaises(req_parser.HTTPError):
+            req = req_parser.Request('GET', '/blabla.txt', 'HTTP/1.1', {})
+            response = req_handler.handle_get_request(self.server, req)
+            self.assertEqual(404, response.status)
 
-        start = time.time()
+    def test_get_dir(self):
+        req = req_parser.Request('GET', '/', 'HTTP/1.1', {})
+        response = req_handler.handle_request(self.server, req)
+        self.assertIn('abc.txt', response.body.decode('utf-8'))
 
+    def test_post_request(self):
+        req = req_parser.Request('POST','/posted_doc.txt', 'HTTP/1.1', {'Content-Length': '6'}, b'Hello!')
+        response = req_handler.handle_request(self.server, req)
+        self.assertEqual('Created', response.description)
+        with open('static/test_dir/posted_doc.txt') as f:
+            self.assertEqual('Hello!', f.read())
 
-        for i in range(10000):
-            with open(s, 'r') as f:
-                f.read()
+    def test_handle_error(self):
+        e = req_parser.HTTPError(404, 'Not Found')
+        response = req_handler.handle_error(e)
+        self.assertEqual(e.status, response.status)
+        self.assertEqual(e.description, response.description)
 
-        end = time.time()
-        print(end - start)
+    def test_internal_error(self):
+        response = req_handler.handle_error(123)
+        self.assertEqual(500, response.status)
+        self.assertEqual(b'Internal Server Error', response.description)
 
-        start = time.time()
-        for i in range(10000):
-            read_file(s)
-
-        print(read_file.cache_info())
-        end = time.time()
-        print(end - start)
-
-    def test_a(self):
-        request = 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n'
-        server_response = check_output(f'echo \'{request}\' | nc -Nw1 localhost 8000',
-                                       stderr=subprocess.STDOUT, shell=True)
-        print(server_response.decode('utf-8'))
-
-        pass
-
-
-@lru_cache(1000)
-def read_file(file_path):
-    with open(file_path, 'r') as f:
-        a = f.read()
-    return a
-
-
-
-if __name__ == '__main__':
-    unittest.main()
+# class TestWholeServer(unittest.TestCase):
+#     # execute run_server.py before running
+#     def test_simple_req(self):
+#         request = 'GET /script.js HTTP/1.1\r\nHost: localhost\r\n\r\n'
+#         server_response = check_output(f'echo \'{request}\' | nc -Nw1 localhost 8000', stderr=STDOUT, shell=True)
+#         with open('static/server1/script.js') as f:
+#             fc = f.read()
+#
+#         self.assertEqual(server_response.decode('utf-8').split('\r\n\r\n')[1], fc)
