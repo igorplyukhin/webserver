@@ -3,6 +3,7 @@ import mimetypes
 from req_parser import HTTPError
 import os
 from pathlib import Path
+from subprocess import check_output, STDOUT
 
 
 def handle_request(server, request):
@@ -36,13 +37,12 @@ def handle_post_request(server, request):
 
 def handle_get_request(server, request):
     file_path = f'{server.root_directory}{request.path}'
-    print(file_path)
     if os.path.isfile(file_path):
         return handle_get_file(server, request, file_path)
     if os.path.isdir(file_path):
-        return handle_get_dir(request, file_path)
+        return handle_get_dir(server, request, file_path)
     else:
-        raise HTTPError(404, 'Not Found')
+        raise HTTPError(404, 'Not Found', request)
 
 
 def handle_get_file(server, request, file_path):
@@ -50,9 +50,9 @@ def handle_get_file(server, request, file_path):
         file_size = os.path.getsize(file_path)
         file_content = read_file(server, file_path, file_size)
     except (FileNotFoundError, IsADirectoryError):
-        raise HTTPError(404, "Not Found")
+        raise HTTPError(404, "Not Found", request)
 
-    headers = {'Server': 'my_server',
+    headers = {'Server': server.server_name,
                'Content-Type': mimetypes.guess_type(request.path)[0],
                'Content-Length': file_size,
                'Connection': define_connection_type(request)}
@@ -60,14 +60,15 @@ def handle_get_file(server, request, file_path):
     return Response(200, 'OK', headers, file_content)
 
 
-def handle_get_dir(request, file_path):
-    content = os.popen(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8").read()
-    headers = {'Server': 'my_server',
+def handle_get_dir(server, request, file_path):
+    content = check_output(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8",
+                           stderr=STDOUT, shell=True)
+    headers = {'Server': server.server_name,
                'Content-Type': 'text/html',
                'Content-Length': len(content),
                'Connection': define_connection_type(request)}
 
-    return Response(200, 'OK', headers, content.encode('utf-8'))
+    return Response(200, 'OK', headers, content)
 
 
 def handle_error(error):

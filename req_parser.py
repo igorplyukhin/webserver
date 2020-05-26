@@ -2,7 +2,7 @@
 import asyncio
 from email.parser import Parser
 from functools import lru_cache
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 MAX_REQ_LINE_LEN = 65535
 MAX_HEADERS_COUNT = 100
@@ -10,10 +10,11 @@ REQ_END_SYMBOLS = [b'', b'\n', b'\r\n']
 
 
 class HTTPError(Exception):
-    def __init__(self, status, description, body=None):
+    def __init__(self, status, description, request=None, body=None):
         super()
         self.status = status
         self.description = description
+        self.request = request
         self.body = body
 
 
@@ -26,7 +27,7 @@ class Request:
         self.body = body
 
     def __str__(self):
-        return ' '.join([self.method, self.target, self.version, str(self.headers)])
+        return ' '.join([self.method, self.target, self.version])
 
     @property
     @lru_cache()
@@ -63,24 +64,24 @@ def parse_request(server, raw_request):
     headers = parse_headers(headers)
     host = headers.get('Host')
     if not host:
-        raise HTTPError(400, 'Bad request', 'Host header is missing')
-    if host not in (server.server_name, f'{server.server_name}:{server.port}'):
-        raise HTTPError(404, 'Not Found')
+        raise HTTPError(400, 'Bad request', request_line, 'Host header is missing')
+    if host not in (server.host, f'{server.host}:{server.port}'):
+        raise HTTPError(404, 'Not Found', request_line)
     return Request(method, target, version, headers)
 
 
 def parse_request_line(raw_line):
     if len(raw_line) > MAX_REQ_LINE_LEN:
-        raise HTTPError(400, 'Bad request', 'Line is too long')
+        raise HTTPError(400, 'Bad request', raw_line, 'Line is too long')
 
     line = str(raw_line, 'iso-8859-1')
     parts = line.split()
     if len(parts) != 3:
-        raise HTTPError(400, 'Bad request', 'Malformed request line')
+        raise HTTPError(400, 'Bad request', raw_line, 'Malformed request line')
 
     method, target, version = parts
     if version != 'HTTP/1.1':
-        raise HTTPError(505, 'HTTP Version Not Supported')
+        raise HTTPError(505, 'HTTP Version Not Supported', raw_line)
 
     return method, target, version
 
