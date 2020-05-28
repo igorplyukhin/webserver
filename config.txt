@@ -1,0 +1,12 @@
+{
+    "server1" : {
+        "name" : "server1"
+        "listen" : 8000,
+        "location" : "./config.txt"},
+    "server2" : {
+        "listen" : 8001,
+        "location" : "./config.txt"}
+}
+
+
+
