@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 import req_parser
 import run_server
@@ -53,23 +54,23 @@ class TestHandler(unittest.TestCase):
         with open('static/test_dir/abc.txt', 'w') as f:
             f.write(test_string)
         req = req_parser.Request('GET', '/abc.txt', 'HTTP/1.1', {})
-        response = req_handler.handle_get_request(self.server, req)
+        response = asyncio.run(req_handler.handle_get_request(self.server, req))
         self.assertEqual(test_string, response.body.decode('utf-8'))
 
     def test_get_non_existing_file(self):
         with self.assertRaises(req_parser.HTTPError):
             req = req_parser.Request('GET', '/blabla.txt', 'HTTP/1.1', {})
-            response = req_handler.handle_get_request(self.server, req)
+            response = asyncio.run(req_handler.handle_get_request(self.server, req))
             self.assertEqual(404, response.status)
 
     def test_get_dir(self):
         req = req_parser.Request('GET', '/', 'HTTP/1.1', {})
-        response = req_handler.handle_request(self.server, req)
+        response = asyncio.run(req_handler.handle_request(self.server, req))
         self.assertIn('abc.txt', response.body.decode('utf-8'))
 
     def test_post_request(self):
         req = req_parser.Request('POST','/posted_doc.txt', 'HTTP/1.1', {'Content-Length': '6'}, b'Hello!')
-        response = req_handler.handle_request(self.server, req)
+        response = asyncio.run(req_handler.handle_request(self.server, req))
         self.assertEqual('Created', response.description)
         with open('static/test_dir/posted_doc.txt') as f:
             self.assertEqual('Hello!', f.read())

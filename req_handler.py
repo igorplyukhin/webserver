@@ -1,14 +1,16 @@
 #!/usr/bin/env python3.8
+import asyncio
 import mimetypes
 from req_parser import HTTPError
 import os
 from pathlib import Path
 from subprocess import check_output, STDOUT
+import requests
 
 
-def handle_request(server, request):
+async def handle_request(server, request):
     if request.method == 'GET':
-        return handle_get_request(server, request)
+        return await handle_get_request(server, request)
     if request.method == 'POST':
         return handle_post_request(server, request)
     else:
@@ -35,14 +37,29 @@ def handle_post_request(server, request):
         return Response(304, 'Not Modified', {'Connection': define_connection_type(request)})
 
 
-def handle_get_request(server, request):
+async def handle_get_request(server, request):
     file_path = f'{server.root_directory}{request.path}'
+    if server.proxy_path:
+        return await handle_proxy_request(server, request)
     if os.path.isfile(file_path):
         return handle_get_file(server, request, file_path)
     if os.path.isdir(file_path):
         return handle_get_dir(server, request, file_path)
     else:
         raise HTTPError(404, 'Not Found', request)
+
+
+async def handle_proxy_request(server, request):
+    loop = asyncio.get_event_loop()
+    try:
+        response = await loop.run_in_executor(None, requests.get, server.proxy_path + request.path)
+    except:
+        raise HTTPError(500, 'Proxy Error', request)
+    headers = {'Server': server.name,
+               'Content-Type': mimetypes.guess_type(request.path)[0],
+               'Content-Length': len(response.content),
+               'Connection': define_connection_type(request)}
+    return Response(200, 'OK', headers, response.content)
 
 
 def handle_get_file(server, request, file_path):
@@ -52,7 +69,7 @@ def handle_get_file(server, request, file_path):
     except (FileNotFoundError, IsADirectoryError):
         raise HTTPError(404, "Not Found", request)
 
-    headers = {'Server': server.server_name,
+    headers = {'Server': server.name,
                'Content-Type': mimetypes.guess_type(request.path)[0],
                'Content-Length': file_size,
                'Connection': define_connection_type(request)}
@@ -63,7 +80,7 @@ def handle_get_file(server, request, file_path):
 def handle_get_dir(server, request, file_path):
     content = check_output(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8",
                            stderr=STDOUT, shell=True)
-    headers = {'Server': server.server_name,
+    headers = {'Server': server.name,
                'Content-Type': 'text/html',
                'Content-Length': len(content),
                'Connection': define_connection_type(request)}
@@ -114,6 +131,7 @@ def get_file_descriptor(server, file_path):
         server.fd_cache[file_path] = os.open(file_path, attributes)
         fd = server.fd_cache[file_path]
     return fd
+
 
 class Response:
     def __init__(self, status, description, headers=None, body=None):
