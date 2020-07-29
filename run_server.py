@@ -2,27 +2,29 @@
 import asyncio
 from lru import LRU
 from logger import log_access, get_access_log_file_descriptor
+import json
 import os
 from req_parser import get_request_object, HTTPError
 from req_handler import handle_request, handle_error
 from resp_sender import send_response
 
+SERVERS = []
+
 
 class HTTPServer:
-    def __init__(self, host="localhost", port=8000, server_name="server1", root_directory='static/server1',
-                 log_directory='logs/server1', proxy_path=None):
+    def __init__(self, host="localhost", port=8000, name="server1", root_dir='static/server1',
+                 log_dir='logs/server1', proxy_path=None):
         self.host = host
         self.port = port
-        self.name = server_name
-        self.root_directory = root_directory
-        self.log_directory = log_directory
+        self.name = name
+        self.root_directory = root_dir
+        self.log_directory = log_dir
         self.fd_cache = LRU(1000, callback=lambda key, val: os.close(val))
-        self.fd_cache[f'{log_directory}/access.log'] = get_access_log_file_descriptor(self)
+        self.fd_cache[f'{log_dir}/access.log'] = get_access_log_file_descriptor(self)
         self.proxy_path = proxy_path
 
     async def get_asyncio_server(self):
-        server = await asyncio.start_server(self.serve_client, self.host, self.port)
-        return server
+        return await asyncio.start_server(self.serve_client, self.host, self.port)
 
     async def serve_client(self, reader, writer):
         try:
@@ -56,16 +58,17 @@ class HTTPServer:
 
 
 async def main():
-    virtual_servers = [await HTTPServer('localhost', 8000).get_asyncio_server(),
-                       await HTTPServer('localhost', 5000, log_directory='logs/server2',
-                                        root_directory='static/server2', proxy_path='http://localhost:8000').get_asyncio_server()]
-    await asyncio.gather(*map(lambda x: x.serve_forever(), virtual_servers))
+    with open('config.txt') as f:
+        config = json.load(f)
+
+    for server in config:
+        SERVERS.append(await HTTPServer(**config[server]).get_asyncio_server())
+    await asyncio.gather(*map(lambda x: x.serve_forever(), SERVERS))
 
 
 if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass
-        # for server in virtual_servers:
-            #await server.__aexit__()
+        for server in SERVERS:
+            asyncio.run(server.__aexit__())
