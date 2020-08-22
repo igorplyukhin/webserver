@@ -16,8 +16,8 @@
 Требования для запуска:
 - Unix система
 - sudo apt install tree
-- python3.8
-- pip install lru-dict
+- python3.8 or above
+- pip3 install lru-dict --user
 
 
 Примеры запуска:
