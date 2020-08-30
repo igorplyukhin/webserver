@@ -6,9 +6,27 @@ import os
 from pathlib import Path
 from subprocess import check_output, STDOUT
 import requests
+import re
+
+
+class Response:
+    def __init__(self, status, description, headers=None, body=None):
+        self.status = status
+        self.description = description
+        self.headers = headers
+        self.body = body
+
+    def __str__(self):
+        return '\r\n'.join([' '.join([str(self.status), str(self.description)]), str(self.headers)])
 
 
 async def handle_request(server, request):
+    if server.regexp_uri_rewrite:
+        url = f'{server.host}:{server.port}{request.path}'
+        for regexp in server.regexp_uri_rewrite:
+            if re.findall(regexp, url):
+                request.target = server.regexp_uri_rewrite[regexp]
+                break
     if request.method == 'GET':
         return await handle_get_request(server, request)
     if request.method == 'POST':
@@ -64,8 +82,12 @@ async def handle_proxy_request(server, request):
 
 def handle_get_file(server, request, file_path):
     try:
-        file_size = os.path.getsize(file_path)
-        file_content = read_file(server, file_path, file_size)
+        if server.cgi and '/cgi-bin/' in file_path:
+            file_content = check_output(f"python3 {file_path}", stderr=STDOUT, shell=True)
+            file_size = len(file_content)
+        else:
+            file_size = os.path.getsize(file_path)
+            file_content = read_file(server, file_path, file_size)
     except (FileNotFoundError, IsADirectoryError):
         raise HTTPError(404, "Not Found", request)
 
@@ -131,14 +153,3 @@ def get_file_descriptor(server, file_path):
         server.fd_cache[file_path] = os.open(file_path, attributes)
         fd = server.fd_cache[file_path]
     return fd
-
-
-class Response:
-    def __init__(self, status, description, headers=None, body=None):
-        self.status = status
-        self.description = description
-        self.headers = headers
-        self.body = body
-
-    def __str__(self):
-        return '\r\n'.join([' '.join([str(self.status), str(self.description)]), str(self.headers)])

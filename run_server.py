@@ -11,11 +11,15 @@ import time
 import multiprocessing as mp
 
 SERVERS = []
+PROCESSES = []
 
 
 class HTTPServer:
     def __init__(self, host="localhost", port=8000, name="server1", root_dir='static/server1',
-                 log_dir='logs/server1', proxy_path=None, limit_rate=None, keep_alive_timeout=15):
+                 log_dir='logs/server1', proxy_path=None, limit_rate=None, keep_alive_timeout=15,
+                 regexp_uri_rewrite=None, cgi=False):
+        if regexp_uri_rewrite is None:
+            regexp_uri_rewrite = dict()
         self.host = host
         self.port = port
         self.name = name
@@ -26,6 +30,8 @@ class HTTPServer:
         self.proxy_path = proxy_path
         self.limit_rate = limit_rate
         self.keep_alive_timeout = keep_alive_timeout
+        self.regexp_uri_rewrite = regexp_uri_rewrite
+        self.cgi = cgi
 
     async def serve_client(self, reader, writer):
         try:
@@ -57,25 +63,14 @@ class HTTPServer:
             await writer.wait_closed()
 
 
-class ProcessNoKeyboardInterruptException(mp.Process):
-    def __init__(self, *args, **kwargs):
-        mp.Process.__init__(self, *args, **kwargs)
-
-    def run(self):
-        try:
-            mp.Process.run(self)
-        except KeyboardInterrupt:
-            for server in SERVERS:
-                asyncio.run(server.__aexit__())
-
-
 def main():
     with open('config.txt') as f:
         config = json.load(f)
 
     for server in config:
         server_obj = HTTPServer(**config[server])
-        p = ProcessNoKeyboardInterruptException(target=build_server, args=(server_obj,))
+        p = mp.Process(target=build_server, args=(server_obj,))
+        PROCESSES.append(p)
         p.start()
 
 

@@ -4,8 +4,7 @@ import req_parser
 import run_server
 import req_handler
 import os
-from subprocess import check_output, STDOUT
-
+from pathlib import Path
 
 if __name__ == '__main__':
     unittest.main()
@@ -41,13 +40,14 @@ class TestParser(unittest.TestCase):
 class TestHandler(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = run_server.HTTPServer(root_directory='./static/test_dir')
+        cls.server = run_server.HTTPServer(root_dir='./static/test_dir')
+        Path(cls.server.root_directory).mkdir(parents=True, exist_ok=True)
         os.mknod('static/test_dir/abc.txt')
 
     @classmethod
     def tearDownClass(cls):
         os.remove('static/test_dir/abc.txt')
-        os.remove('static/test_dir/posted_doc.txt')
+        Path(cls.server.root_directory).rmdir()
 
     def test_get_existing_file(self):
         test_string = 'test_string'
@@ -69,11 +69,13 @@ class TestHandler(unittest.TestCase):
         self.assertIn('abc.txt', response.body.decode('utf-8'))
 
     def test_post_request(self):
-        req = req_parser.Request('POST','/posted_doc.txt', 'HTTP/1.1', {'Content-Length': '6'}, b'Hello!')
+        req = req_parser.Request('POST', '/posted_doc.txt', 'HTTP/1.1', {'Content-Length': '6'}, b'Hello!')
         response = asyncio.run(req_handler.handle_request(self.server, req))
         self.assertEqual('Created', response.description)
         with open('static/test_dir/posted_doc.txt') as f:
             self.assertEqual('Hello!', f.read())
+
+        os.remove('static/test_dir/posted_doc.txt')
 
     def test_handle_error(self):
         e = req_parser.HTTPError(404, 'Not Found')
@@ -85,13 +87,3 @@ class TestHandler(unittest.TestCase):
         response = req_handler.handle_error(123)
         self.assertEqual(500, response.status)
         self.assertEqual(b'Internal Server Error', response.description)
-
-# class TestWholeServer(unittest.TestCase):
-#     # execute run_server.py before running
-#     def test_simple_req(self):
-#         request = 'GET /script.js HTTP/1.1\r\nHost: localhost\r\n\r\n'
-#         server_response = check_output(f'echo \'{request}\' | nc -Nw1 localhost 8000', stderr=STDOUT, shell=True)
-#         with open('static/server1/script.js') as f:
-#             fc = f.read()
-#
-#         self.assertEqual(server_response.decode('utf-8').split('\r\n\r\n')[1], fc)

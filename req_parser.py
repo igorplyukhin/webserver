@@ -30,7 +30,6 @@ class Request:
         return ' '.join([self.method, self.target, self.version])
 
     @property
-    @lru_cache()
     def url(self):
         return urlparse(self.target)
 
