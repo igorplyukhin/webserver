@@ -1,10 +1,7 @@
-"WebServer" Автор Плюхин Игорь КН-102
-
-Описание:
 Веб-сервер раздающий статическое содержимое
 
 
-- Асинхронна реализация
+- Асинхронная реализация
 - Ручной разбор HTTP запросов
 - keep alive connection
 - кэш дескрипторов открытых файлов (https://nginx.org/ru/docs/http/ngx_http_core_module.html#open_file_cache)
