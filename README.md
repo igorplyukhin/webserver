@@ -1,7 +1,7 @@
-Webserver ![Python 3.8](https://img.shields.io/badge/python-3.8-blue) ![Top Language](https://img.shields.io/github/languages/top/igorplyukhin/webserver)
+Webserver ![Python 3.8](https://img.shields.io/badge/python-3.8-blue) ![Build](https://img.shields.io/badge/build-passing-brightgreen) ![Top Language](https://img.shields.io/github/languages/top/igorplyukhin/webserver)
 =================================================================================================================================================================================
 
-python3 asynchronous webserver serving static requests
+asynchronous multiprocessor webserver serving static requests
 
 **Features**
 
