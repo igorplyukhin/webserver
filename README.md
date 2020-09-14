@@ -1,21 +1,26 @@
-Веб-сервер раздающий статическое содержимое
+Webserver ![Python 3.8](https://img.shields.io/badge/python-3.8-blue) ![Top Language](https://img.shields.io/github/languages/top/igorplyukhin/webserver)
+=================================================================================================================================================================================
+
+python3 asynchronous webserver serving static requests
+
+**Features**
+
+- Asyncio realisation
+- Keep-alive support
+- Static requests + opened files descriptors cache
+- Logging
+- Virtual servers
+- Configuration file
+- Proxy pass support
 
 
-- Асинхронная реализация
-- Ручной разбор HTTP запросов
-- keep alive connection
-- кэш дескрипторов открытых файлов (https://nginx.org/ru/docs/http/ngx_http_core_module.html#open_file_cache)
-- Автоматическая индексация файлов в каталоге
-- Логирование запросов в файл в формате apache
-- поддержка GET, POST запросов
-
-
-Требования для запуска:
-- Unix система
-- sudo apt install tree
+**Reqiurements**
+- Unix-like system
+- `sudo apt install tree`
 - python3.8
-- pip install lru-dict
+- `pip install lru-dict`
 
 
-Примеры запуска:
-python3.8 run_server.py
+**Usage**
+
+`python3.8 run_server.py`
