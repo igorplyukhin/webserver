@@ -1,14 +1,34 @@
 #!/usr/bin/env python3.8
+import asyncio
 import mimetypes
 from req_parser import HTTPError
 import os
 from pathlib import Path
 from subprocess import check_output, STDOUT
+import requests
+import re
 
 
-def handle_request(server, request):
+class Response:
+    def __init__(self, status, description, headers=None, body=None):
+        self.status = status
+        self.description = description
+        self.headers = headers
+        self.body = body
+
+    def __str__(self):
+        return '\r\n'.join([' '.join([str(self.status), str(self.description)]), str(self.headers)])
+
+
+async def handle_request(server, request):
+    if server.regexp_uri_rewrite:
+        url = f'{server.host}:{server.port}{request.path}'
+        for regexp in server.regexp_uri_rewrite:
+            if re.findall(regexp, url):
+                request.target = server.regexp_uri_rewrite[regexp]
+                break
     if request.method == 'GET':
-        return handle_get_request(server, request)
+        return await handle_get_request(server, request)
     if request.method == 'POST':
         return handle_post_request(server, request)
     else:
@@ -35,8 +55,10 @@ def handle_post_request(server, request):
         return Response(304, 'Not Modified', {'Connection': define_connection_type(request)})
 
 
-def handle_get_request(server, request):
+async def handle_get_request(server, request):
     file_path = f'{server.root_directory}{request.path}'
+    if server.proxy_path:
+        return await handle_proxy_request(server, request)
     if os.path.isfile(file_path):
         return handle_get_file(server, request, file_path)
     if os.path.isdir(file_path):
@@ -45,14 +67,31 @@ def handle_get_request(server, request):
         raise HTTPError(404, 'Not Found', request)
 
 
+async def handle_proxy_request(server, request):
+    loop = asyncio.get_event_loop()
+    try:
+        response = await loop.run_in_executor(None, requests.get, server.proxy_path + request.path)
+    except:
+        raise HTTPError(500, 'Proxy Error', request)
+    headers = {'Server': server.name,
+               'Content-Type': mimetypes.guess_type(request.path)[0],
+               'Content-Length': len(response.content),
+               'Connection': define_connection_type(request)}
+    return Response(200, 'OK', headers, response.content)
+
+
 def handle_get_file(server, request, file_path):
     try:
-        file_size = os.path.getsize(file_path)
-        file_content = read_file(server, file_path, file_size)
+        if server.cgi and '/cgi-bin/' in file_path:
+            file_content = check_output(f"python3 {file_path}", stderr=STDOUT, shell=True)
+            file_size = len(file_content)
+        else:
+            file_size = os.path.getsize(file_path)
+            file_content = read_file(server, file_path, file_size)
     except (FileNotFoundError, IsADirectoryError):
         raise HTTPError(404, "Not Found", request)
 
-    headers = {'Server': server.server_name,
+    headers = {'Server': server.name,
                'Content-Type': mimetypes.guess_type(request.path)[0],
                'Content-Length': file_size,
                'Connection': define_connection_type(request)}
@@ -63,7 +102,7 @@ def handle_get_file(server, request, file_path):
 def handle_get_dir(server, request, file_path):
     content = check_output(f"cd {file_path}/ && tree -H '.' -L 1 --noreport --charset utf-8",
                            stderr=STDOUT, shell=True)
-    headers = {'Server': server.server_name,
+    headers = {'Server': server.name,
                'Content-Type': 'text/html',
                'Content-Length': len(content),
                'Connection': define_connection_type(request)}
@@ -114,13 +153,3 @@ def get_file_descriptor(server, file_path):
         server.fd_cache[file_path] = os.open(file_path, attributes)
         fd = server.fd_cache[file_path]
     return fd
-
-class Response:
-    def __init__(self, status, description, headers=None, body=None):
-        self.status = status
-        self.description = description
-        self.headers = headers
-        self.body = body
-
-    def __str__(self):
-        return '\r\n'.join([' '.join([str(self.status), str(self.description)]), str(self.headers)])

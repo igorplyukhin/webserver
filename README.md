@@ -4,7 +4,6 @@ Webserver ![Python 3.8](https://img.shields.io/badge/python-3.8-blue) ![Build](h
 asynchronous multiprocessor webserver serving static requests
 
 **Features**
-
 - Asyncio realisation
 - Keep-alive support
 - Static requests + opened files descriptors cache
@@ -13,14 +12,12 @@ asynchronous multiprocessor webserver serving static requests
 - Configuration file
 - Proxy pass support
 
-
 **Reqiurements**
 - Unix-like system
 - `sudo apt install tree`
 - python3.8
 - `pip install lru-dict`
-
+dict --user
 
 **Usage**
-
 `python3.8 run_server.py`

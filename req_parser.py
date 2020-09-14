@@ -30,7 +30,6 @@ class Request:
         return ' '.join([self.method, self.target, self.version])
 
     @property
-    @lru_cache()
     def url(self):
         return urlparse(self.target)
 
@@ -41,7 +40,7 @@ class Request:
 
 async def get_request_object(server, reader):
     raw_request = []
-    raw_line = await asyncio.wait_for(reader.readline(), 15)
+    raw_line = await asyncio.wait_for(reader.readline(), server.keep_alive_timeout)
     if not raw_line:
         raise ConnectionAbortedError
     raw_request.append(raw_line)

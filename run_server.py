@@ -2,26 +2,36 @@
 import asyncio
 from lru import LRU
 from logger import log_access, get_access_log_file_descriptor
+import json
 import os
 from req_parser import get_request_object, HTTPError
 from req_handler import handle_request, handle_error
 from resp_sender import send_response
+import time
+import multiprocessing as mp
+
+SERVERS = []
+PROCESSES = []
 
 
 class HTTPServer:
-    def __init__(self, host="localhost", port=8000, server_name="server1", root_directory='static/server1',
-                 log_directory='logs/server1'):
+    def __init__(self, host="localhost", port=8000, name="server1", root_dir='static/server1',
+                 log_dir='logs/server1', proxy_path=None, limit_rate=None, keep_alive_timeout=15,
+                 regexp_uri_rewrite=None, cgi=False):
+        if regexp_uri_rewrite is None:
+            regexp_uri_rewrite = dict()
         self.host = host
         self.port = port
-        self.server_name = server_name
-        self.root_directory = root_directory
-        self.log_directory = log_directory
+        self.name = name
+        self.root_directory = root_dir
+        self.log_directory = log_dir
         self.fd_cache = LRU(1000, callback=lambda key, val: os.close(val))
-        self.fd_cache[f'{log_directory}/access.log'] = get_access_log_file_descriptor(self)
-
-    async def run_server(self):
-        server = await asyncio.start_server(self.serve_client, self.host, self.port)
-        await server.serve_forever()
+        self.fd_cache[f'{log_dir}/access.log'] = get_access_log_file_descriptor(self)
+        self.proxy_path = proxy_path
+        self.limit_rate = limit_rate
+        self.keep_alive_timeout = keep_alive_timeout
+        self.regexp_uri_rewrite = regexp_uri_rewrite
+        self.cgi = cgi
 
     async def serve_client(self, reader, writer):
         try:
@@ -29,9 +39,11 @@ class HTTPServer:
             while True:
                 try:
                     request = await get_request_object(self, reader)
-                    response = handle_request(self, request)
+                    response = await handle_request(self, request)
                     send_response(writer, response)
                     log_access(self, connection_info, request, response)
+                    if self.limit_rate:
+                        time.sleep(1 / self.limit_rate)
                 except asyncio.exceptions.TimeoutError:
                     print(f'connection {connection_info} closed by timeout')
                     break
@@ -45,18 +57,35 @@ class HTTPServer:
                     response = handle_error(error)
                     send_response(writer, response)
                     log_access(self, connection_info, error.request, response)
-        # except:
-            # log smth ConnectionResetError if close connection while handling send_error()
-            # BrokenPipeError ^C
         finally:
             await writer.drain()
             writer.close()
             await writer.wait_closed()
 
 
+def main():
+    with open('config.txt') as f:
+        config = json.load(f)
+
+    for server in config:
+        server_obj = HTTPServer(**config[server])
+        p = mp.Process(target=build_server, args=(server_obj,))
+        PROCESSES.append(p)
+        p.start()
+
+
+def build_server(server_obj):
+    async def f():
+        server = await asyncio.start_server(client_connected_cb=server_obj.serve_client,
+                                            host=server_obj.host, port=server_obj.port)
+        SERVERS.append(server)
+        await server.serve_forever()
+
+    asyncio.run(f())
+
+
 if __name__ == '__main__':
-    s = HTTPServer()
     try:
-        asyncio.run(s.run_server())
+        main()
     except KeyboardInterrupt:
         pass

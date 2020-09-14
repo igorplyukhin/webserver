@@ -1,11 +1,13 @@
 {
     "server1" : {
-        "name" : "server1"
-        "listen" : 8000,
-        "location" : "./config.txt"},
+        "host" : "localhost",
+        "port" : 8000,
+        "name" : "server1",
+        "root_dir" : "static/server1",
+        "cgi" : "True"},
     "server2" : {
-        "listen" : 8001,
-        "location" : "./config.txt"}
+        "port" : 5000,
+        "root_dir" : "static/server2"}
 }
 
 
