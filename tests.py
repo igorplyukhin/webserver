@@ -16,7 +16,7 @@ class TestParser(unittest.TestCase):
         cls.server = run_server.HTTPServer()
 
     def test_simple(self):
-        raw_req = [b'GET / HTTP/1.1\r\n', b'Host: localhost\r\n']
+        raw_req = ['GET / HTTP/1.1\r\n'.encode(), f'Host: {self.server.host}\r\n'.encode()]
         parsed_req = req_parser.parse_request(self.server, raw_req)
         self.assertEqual(parsed_req.method, "GET")
         self.assertEqual(parsed_req.target, "/")

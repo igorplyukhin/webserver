@@ -82,8 +82,12 @@ async def handle_proxy_request(server, request):
 
 def handle_get_file(server, request, file_path):
     try:
+        content_type = mimetypes.guess_type(request.path)[0]
         if server.cgi and '/cgi-bin/' in file_path:
-            file_content = check_output(f"python3 {file_path}", stderr=STDOUT, shell=True)
+            file_content = check_output(f"chmod +x {file_path} && ./{file_path}", stderr=STDOUT, shell=True)
+            new_line = file_content.find(b'\n')
+            content_type = file_content[:new_line].split(b' ')[-1].decode()
+            file_content = file_content[new_line+2:]
             file_size = len(file_content)
         else:
             file_size = os.path.getsize(file_path)
@@ -92,7 +96,7 @@ def handle_get_file(server, request, file_path):
         raise HTTPError(404, "Not Found", request)
 
     headers = {'Server': server.name,
-               'Content-Type': mimetypes.guess_type(request.path)[0],
+               'Content-Type': content_type,
                'Content-Length': file_size,
                'Connection': define_connection_type(request)}
 

@@ -7,7 +7,6 @@ import os
 from req_parser import get_request_object, HTTPError
 from req_handler import handle_request, handle_error
 from resp_sender import send_response
-import time
 import multiprocessing as mp
 
 SERVERS = []
@@ -15,8 +14,8 @@ PROCESSES = []
 
 
 class HTTPServer:
-    def __init__(self, host="localhost", port=8000, name="server1", root_dir='static/server1',
-                 log_dir='logs/server1', proxy_path=None, limit_rate=None, keep_alive_timeout=15,
+    def __init__(self, host="127.0.0.1", port=8000, name="server1", root_dir='static/server1',
+                 log_dir='logs/server1', proxy_pass=None, bandwidth=None, keep_alive_timeout=1,
                  regexp_uri_rewrite=None, cgi=False):
         if regexp_uri_rewrite is None:
             regexp_uri_rewrite = dict()
@@ -27,8 +26,8 @@ class HTTPServer:
         self.log_directory = log_dir
         self.fd_cache = LRU(1000, callback=lambda key, val: os.close(val))
         self.fd_cache[f'{log_dir}/access.log'] = get_access_log_file_descriptor(self)
-        self.proxy_path = proxy_path
-        self.limit_rate = limit_rate
+        self.proxy_path = proxy_pass
+        self.bandwidth = bandwidth
         self.keep_alive_timeout = keep_alive_timeout
         self.regexp_uri_rewrite = regexp_uri_rewrite
         self.cgi = cgi
@@ -40,10 +39,9 @@ class HTTPServer:
                 try:
                     request = await get_request_object(self, reader)
                     response = await handle_request(self, request)
-                    send_response(writer, response)
+                    await send_response(self, writer, response)
                     log_access(self, connection_info, request, response)
-                    if self.limit_rate:
-                        time.sleep(1 / self.limit_rate)
+
                 except asyncio.exceptions.TimeoutError:
                     print(f'connection {connection_info} closed by timeout')
                     break
@@ -55,7 +53,7 @@ class HTTPServer:
                     break
                 except HTTPError as error:
                     response = handle_error(error)
-                    send_response(writer, response)
+                    await send_response(self, writer, response)
                     log_access(self, connection_info, error.request, response)
         finally:
             await writer.drain()
