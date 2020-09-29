@@ -1,16 +1,17 @@
 {
     "server1" : {
-        "host" : "192.168.1.215",
-        "port" : 8000,
+        "host" : "127.0.0.1",
+        "port" : 5000,
         "name" : "server1",
-        "root_dir" : "static/server1",
+        "root_dir" : "static/server2",
         "cgi" : "True",
         "bandwidth": 0},
     "server2" : {
         "host" : "127.0.0.1",
-        "port" : 5000,
+        "port" : 8000,
         "root_dir" : "static/server1",
-        "bandwidth": 1000000}
+        "bandwidth": 500000,
+        "cgi" : "True"}
 }
 
 
