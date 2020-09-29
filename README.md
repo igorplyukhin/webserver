@@ -6,18 +6,21 @@ asynchronous multiprocessor webserver serving static requests
 **Features**
 - Asyncio realisation
 - Keep-alive support
-- Static requests + opened files descriptors cache
+- Static requests
+- Opened files descriptors cache
 - Logging
 - Virtual servers
 - Configuration file
-- Proxy pass support
+- Proxy pass
+- CGI
+- Bandwidth limit
+- Regexp uri rewrite
 
 **Reqiurements**
-- Unix-like system
+- Linux system
 - `sudo apt install tree`
 - python3.8
-- `pip install lru-dict`
-dict --user
+- `pip install --user lru-dict`
 
 **Usage**
 `python3.8 run_server.py`
