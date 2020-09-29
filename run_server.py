@@ -26,7 +26,7 @@ class HTTPServer:
         self.log_directory = log_dir
         self.fd_cache = LRU(1000, callback=lambda key, val: os.close(val))
         self.fd_cache[f'{log_dir}/access.log'] = get_access_log_file_descriptor(self)
-        self.proxy_path = proxy_pass
+        self.proxy_pass = proxy_pass
         self.bandwidth = bandwidth
         self.keep_alive_timeout = keep_alive_timeout
         self.regexp_uri_rewrite = regexp_uri_rewrite

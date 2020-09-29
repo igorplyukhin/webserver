@@ -57,7 +57,7 @@ def handle_post_request(server, request):
 
 async def handle_get_request(server, request):
     file_path = f'{server.root_directory}{request.path}'
-    if server.proxy_path:
+    if server.proxy_pass:
         return await handle_proxy_request(server, request)
     if os.path.isfile(file_path):
         return handle_get_file(server, request, file_path)
@@ -70,7 +70,7 @@ async def handle_get_request(server, request):
 async def handle_proxy_request(server, request):
     loop = asyncio.get_event_loop()
     try:
-        response = await loop.run_in_executor(None, requests.get, server.proxy_path + request.path)
+        response = await loop.run_in_executor(None, requests.get, server.proxy_pass + request.path)
     except:
         raise HTTPError(500, 'Proxy Error', request)
     headers = {'Server': server.name,
